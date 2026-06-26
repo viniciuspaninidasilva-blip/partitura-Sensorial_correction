@@ -30,6 +30,16 @@
         input[type="range"]::-webkit-slider-thumb:hover {
             transform: scale(1.2);
         }
+        /* Grelha robusta de 16 colunas para compatibilidade máxima em qualquer navegador */
+        .grid-16 {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+        }
+        @media (min-width: 768px) {
+            .grid-16 {
+                grid-template-columns: repeat(16, minmax(0, 1fr));
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-violet-500/30 selection:text-violet-200">
@@ -194,8 +204,8 @@
                 <div class="space-y-2 text-left">
                     <span class="text-xs text-slate-400 block">Modo do Motor Tátil:</span>
                     <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                        <button id="modePhysicalBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold transition-all">Física (Motor)</button>
-                        <button id="modeAcousticBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold transition-all">Acústica (Som)</button>
+                        <button id="modePhysicalBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold transition-all w-full text-center flex items-center justify-center">Física (Motor)</button>
+                        <button id="modeAcousticBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold transition-all w-full text-center flex items-center justify-center">Acústica (Som)</button>
                     </div>
                 </div>
             </div>
@@ -384,11 +394,11 @@
         // Atualiza o aspeto visual do comutador de Tipo de Vibração
         function updateVibrationModeUI() {
             if (state.vibrationMode === 'physical') {
-                modePhysicalBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-violet-600 text-white shadow";
-                modeAcousticBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-transparent text-slate-400 hover:text-slate-200";
+                modePhysicalBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-violet-600 text-white shadow w-full text-center flex items-center justify-center";
+                modeAcousticBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-transparent text-slate-400 hover:text-slate-200 w-full text-center flex items-center justify-center";
             } else {
-                modeAcousticBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-violet-600 text-white shadow";
-                modePhysicalBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-transparent text-slate-400 hover:text-slate-200" + (state.isIOS || !("vibrate" in navigator) ? ' opacity-40 cursor-not-allowed' : '');
+                modeAcousticBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-violet-600 text-white shadow w-full text-center flex items-center justify-center";
+                modePhysicalBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-transparent text-slate-400 hover:text-slate-200 w-full text-center flex items-center justify-center" + (state.isIOS || !("vibrate" in navigator) ? ' opacity-40 cursor-not-allowed' : '');
             }
         }
 
@@ -539,7 +549,7 @@
                 trackHeader.appendChild(controlsWrapper);
 
                 const stepGrid = document.createElement('div');
-                stepGrid.className = "grid grid-cols-8 md:grid-cols-16 gap-1.5";
+                stepGrid.className = "grid-16 gap-1.5";
 
                 for (let i = 0; i < 16; i++) {
                     const stepVal = track.sequence[i];
