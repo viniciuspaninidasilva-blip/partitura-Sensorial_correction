@@ -74,6 +74,15 @@
             </div>
         </div>
 
+        <!-- Secção de Diagnóstico Rápido -->
+        <div id="diagnosticFeedback" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+            <div class="flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-violet-500 animate-ping"></span>
+                <span class="text-xs text-slate-300 font-medium">Diagnóstico de resposta em tempo real ativo.</span>
+            </div>
+            <span id="diagnosticText" class="text-xs text-violet-400 font-semibold"></span>
+        </div>
+
         <!-- Secção de Importação -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
             <div class="flex items-center gap-2 mb-4">
@@ -200,12 +209,21 @@
                     <input type="range" id="vibrateDurationRange" min="20" max="200" step="10" value="60" class="w-full accent-violet-500 bg-slate-800 rounded-lg appearance-none h-1.5 cursor-pointer">
                 </div>
 
-                <!-- Seletor de Tipo de Vibração (Física vs Acústica) -->
+                <!-- Seletor de Tipo de Vibração (Física vs Acústica) com Testadores de Toque Direto -->
                 <div class="space-y-2 text-left">
                     <span class="text-xs text-slate-400 block">Modo do Motor Tátil:</span>
                     <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                        <button id="modePhysicalBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold transition-all w-full text-center flex items-center justify-center">Física (Motor)</button>
-                        <button id="modeAcousticBtn" class="py-1.5 px-3 rounded-lg text-xs font-semibold transition-all w-full text-center flex items-center justify-center">Acústica (Som)</button>
+                        <button id="modePhysicalBtn" class="py-1.5 px-2 rounded-lg text-xs font-semibold transition-all w-full text-center flex items-center justify-center">Física (Motor)</button>
+                        <button id="modeAcousticBtn" class="py-1.5 px-2 rounded-lg text-xs font-semibold transition-all w-full text-center flex items-center justify-center">Acústica (Som)</button>
+                    </div>
+                    <!-- Botões de teste imediato por clique (Ignoram o temporizador para provar se o motor funciona) -->
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button id="testPhysicalBtn" class="py-1 px-2 rounded bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-violet-500/40 text-[10px] text-slate-400 font-semibold transition-colors flex items-center justify-center gap-1">
+                            <i data-lucide="activity" class="w-3 h-3 text-violet-400"></i> Testar Motor
+                        </button>
+                        <button id="testAcousticBtn" class="py-1 px-2 rounded bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-fuchsia-500/40 text-[10px] text-slate-400 font-semibold transition-colors flex items-center justify-center gap-1">
+                            <i data-lucide="bell" class="w-3 h-3 text-fuchsia-400"></i> Testar Som
+                        </button>
                     </div>
                 </div>
             </div>
@@ -345,6 +363,10 @@
         // Botões de Tipo de Vibração
         const modePhysicalBtn = document.getElementById('modePhysicalBtn');
         const modeAcousticBtn = document.getElementById('modeAcousticBtn');
+        const testPhysicalBtn = document.getElementById('testPhysicalBtn');
+        const testAcousticBtn = document.getElementById('testAcousticBtn');
+        const diagnosticFeedback = document.getElementById('diagnosticFeedback');
+        const diagnosticText = document.getElementById('diagnosticText');
 
         // Modais de Ajuda
         const infoModal = document.getElementById('infoModal');
@@ -373,13 +395,17 @@
 
         // Desbloquear o AudioContext no telemóvel ao tocar em qualquer lado
         window.addEventListener('click', () => {
+            initAudioContext();
+        }, { once: false });
+
+        function initAudioContext() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
             if (audioCtx && audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
-        }, { once: false });
+        }
 
         // Deteta plataforma e define a interface de vibração correta
         function detectPlatformAndVibration() {
@@ -398,6 +424,9 @@
                     modePhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
                     modePhysicalBtn.title = "A vibração mecânica pelo navegador está desativada no iOS pela Apple.";
                 }
+                if (testPhysicalBtn) {
+                    testPhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                }
             } else if (!("vibrate" in navigator)) {
                 // Caso não tenha suporte a vibração física geral, o fallback é acústico
                 state.vibrationMode = 'acoustic';
@@ -405,6 +434,7 @@
                 if (vibrateLabelText) vibrateLabelText.textContent = "Vibração Acústica";
                 updateToggleUI(toggleVibrate, true, "Modo Acústico");
                 if (modePhysicalBtn) modePhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                if (testPhysicalBtn) testPhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
             } else {
                 // Para Android com suporte a vibração normal
                 state.vibrationMode = 'physical';
@@ -442,6 +472,48 @@
                 if (vibrateLabelText) vibrateLabelText.textContent = "Vibração Acústica";
                 updateVibrationModeUI();
             });
+        }
+
+        // Botão de Diagnóstico de Toque Imediato: Motor Físico (IGNORA TEMPORIZADORES - EXECUÇÃO GESTUAL PURA)
+        if (testPhysicalBtn) {
+            testPhysicalBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                initAudioContext();
+                if (state.isIOS || !("vibrate" in navigator)) {
+                    showDiagnostic("Bloqueado pelo iOS: Usa o teste acústico!", "text-amber-400");
+                    return;
+                }
+                
+                // Disparo de teste imediato baseado em gesto de toque puro
+                const vibrated = navigator.vibrate([150]);
+                if (vibrated) {
+                    showDiagnostic("O motor mecânico respondeu com sucesso!", "text-emerald-400");
+                } else {
+                    showDiagnostic("O motor recusou. Verifica as Definições do Android.", "text-rose-400");
+                }
+            });
+        }
+
+        // Botão de Diagnóstico de Toque Imediato: Vibração Acústica (Sub-grave 45Hz)
+        if (testAcousticBtn) {
+            testAcousticBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                initAudioContext();
+                playAcousticHaptic(200);
+                showDiagnostic("Som Sub-grave emitido! Aumenta o volume do telemóvel.", "text-fuchsia-400");
+            });
+        }
+
+        // Apresenta caixas de diagnóstico na interface
+        function showDiagnostic(msg, colorClass) {
+            if (diagnosticFeedback && diagnosticText) {
+                diagnosticFeedback.classList.remove('hidden');
+                diagnosticText.className = `text-xs font-semibold ${colorClass}`;
+                diagnosticText.textContent = msg;
+                setTimeout(() => {
+                    diagnosticFeedback.classList.add('hidden');
+                }, 5000);
+            }
         }
 
         // Atualiza a barra de estado dos botões gerais
@@ -773,11 +845,16 @@
             if (state.isPlaying) return;
             state.isPlaying = true;
 
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
+            initAudioContext();
+
+            // DESBLOQUEADOR GESTUAL DE SEGURANÇA:
+            // Despara uma micro-vibração no momento do clique para contornar bloqueios de segurança do navegador
+            if (state.vibrateEnabled) {
+                if (state.vibrationMode === 'physical' && "vibrate" in navigator) {
+                    navigator.vibrate([10]); // micro pulso para validar a sessão
+                } else if (state.vibrationMode === 'acoustic') {
+                    playAcousticHaptic(15);
+                }
             }
 
             if (playIcon) playIcon.setAttribute('data-lucide', 'pause');
@@ -824,11 +901,11 @@
                     if (state.vibrationMode === 'acoustic') {
                         playAcousticHaptic(duration);
                     } else if (state.vibrationMode === 'physical' && "vibrate" in navigator) {
-                        navigator.vibrate(duration);
+                        navigator.vibrate([duration]);
                     } else {
                         // Fallback de contingência
                         if ("vibrate" in navigator) {
-                            navigator.vibrate(duration);
+                            navigator.vibrate([duration]);
                         } else {
                             playAcousticHaptic(duration);
                         }
