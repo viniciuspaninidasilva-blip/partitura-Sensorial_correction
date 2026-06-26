@@ -16,7 +16,7 @@
         .glow-active {
             box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
         }
-        /* Personalização simples do slider de duração */
+        /* Personalização do slider de duração */
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
@@ -65,22 +65,22 @@
     <!-- Conteúdo Principal -->
     <main class="flex-grow max-w-4xl w-full mx-auto p-4 space-y-6">
 
-        <!-- Banner Informativo de Compatibilidade -->
-        <div id="vibrationNotice" class="hidden bg-violet-500/10 border border-violet-500/30 rounded-xl p-4 flex gap-3 items-start">
-            <i data-lucide="info" class="w-5 h-5 text-violet-400 shrink-0 mt-0.5"></i>
+        <!-- Banner Informativo de Compatibilidade Dinâmico -->
+        <div id="vibrationNotice" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex gap-3 items-start">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
             <div class="text-sm text-slate-200">
-                <p class="font-semibold text-violet-300">Modo de Vibração Acústica Ativo:</p>
-                <p class="text-slate-300 text-xs mt-1">Detetamos um dispositivo iOS (iPhone) ou sem suporte de vibração física direta no navegador. Ativamos o **módulo acústico**: o altifalante do telemóvel emitirá ondas sub-graves para fazer o dispositivo vibrar nas tuas mãos. **Aumenta o volume de som para sentir o ritmo!**</p>
+                <p class="font-semibold text-amber-300" id="noticeTitle">Restrição de Ambiente Web Detetada:</p>
+                <p class="text-slate-300 text-xs mt-1" id="noticeDescription">O navegador está a bloquear o motor físico de vibração (comum em iPhones ou janelas de teste integradas). Ativámos a **Vibração Acústica de Emergência**: aumenta o som do telemóvel para sentir o impacto físico através do altifalante!</p>
             </div>
         </div>
 
         <!-- Secção de Diagnóstico Rápido -->
-        <div id="diagnosticFeedback" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+        <div id="diagnosticFeedback" class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
             <div class="flex items-center gap-2.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-violet-500 animate-ping"></span>
-                <span class="text-xs text-slate-300 font-medium">Diagnóstico de resposta em tempo real ativo.</span>
+                <span class="text-xs text-slate-300 font-medium">Estado do Hardware:</span>
             </div>
-            <span id="diagnosticText" class="text-xs text-violet-400 font-semibold"></span>
+            <span id="diagnosticText" class="text-xs text-violet-400 font-semibold">A aguardar teste de toque...</span>
         </div>
 
         <!-- Secção de Importação -->
@@ -286,6 +286,7 @@
             playbackInterval: null,
             currentGenre: 'samba',
             isIOS: false,
+            vibrationBlockedByIframe: false, // Regista se o browser bloqueou o motor nativo no iframe
             
             // Faixas de Instrumentos
             tracks: {
@@ -412,31 +413,42 @@
             // Detetar se o utilizador está em iOS (iPhone, iPad, etc)
             state.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             
-            if (state.isIOS) {
-                // Se for iOS, forçar o modo acústico pois o navegador não acede à vibração física
+            // Tenta testar a API nativa silenciosamente para apanhar erros de iframe sandbox
+            let nativeVibrateSuccess = false;
+            try {
+                if ("vibrate" in navigator) {
+                    // Chamada simulada ultra curta para verificar se o navegador rejeita
+                    nativeVibrateSuccess = navigator.vibrate(1);
+                }
+            } catch (error) {
+                console.warn("Vibração nativa bloqueada pelas restrições do Iframe sandbox:", error.message);
+                state.vibrationBlockedByIframe = true;
+            }
+
+            if (state.isIOS || state.vibrationBlockedByIframe || !("vibrate" in navigator)) {
+                // Forçar o modo acústico pois o navegador não consegue aceder ao motor físico
                 state.vibrationMode = 'acoustic';
                 if (vibrationNotice) vibrationNotice.classList.remove('hidden');
+                
+                if (state.vibrationBlockedByIframe) {
+                    const noticeTitle = document.getElementById('noticeTitle');
+                    const noticeDescription = document.getElementById('noticeDescription');
+                    if (noticeTitle) noticeTitle.textContent = "Segurança de Iframe Ativa (Bloqueio Mecânico):";
+                    if (noticeDescription) noticeDescription.textContent = "O contentor seguro (iframe) bloqueou o motor de vibração nativo. Ativámos automaticamente o **Modo Acústico**: aumenta o som do telemóvel para sentir o impacto físico!";
+                }
+
                 if (vibrateLabelText) vibrateLabelText.textContent = "Vibração Acústica";
                 updateToggleUI(toggleVibrate, true, "Modo Acústico");
                 
                 // Desativar visualmente a opção do motor físico
                 if (modePhysicalBtn) {
                     modePhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
-                    modePhysicalBtn.title = "A vibração mecânica pelo navegador está desativada no iOS pela Apple.";
                 }
                 if (testPhysicalBtn) {
                     testPhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
                 }
-            } else if (!("vibrate" in navigator)) {
-                // Caso não tenha suporte a vibração física geral, o fallback é acústico
-                state.vibrationMode = 'acoustic';
-                if (vibrationNotice) vibrationNotice.classList.remove('hidden');
-                if (vibrateLabelText) vibrateLabelText.textContent = "Vibração Acústica";
-                updateToggleUI(toggleVibrate, true, "Modo Acústico");
-                if (modePhysicalBtn) modePhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
-                if (testPhysicalBtn) testPhysicalBtn.classList.add('opacity-40', 'cursor-not-allowed');
             } else {
-                // Para Android com suporte a vibração normal
+                // Para Android com suporte a vibração normal e sem restrições
                 state.vibrationMode = 'physical';
                 updateToggleUI(toggleVibrate, true, "Ativada");
             }
@@ -446,19 +458,23 @@
 
         // Atualiza o aspeto visual do comutador de Tipo de Vibração
         function updateVibrationModeUI() {
-            if (state.vibrationMode === 'physical') {
+            const isPhysicalBlocked = state.isIOS || state.vibrationBlockedByIframe || !("vibrate" in navigator);
+            if (state.vibrationMode === 'physical' && !isPhysicalBlocked) {
                 if (modePhysicalBtn) modePhysicalBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-violet-600 text-white shadow w-full text-center flex items-center justify-center";
                 if (modeAcousticBtn) modeAcousticBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-transparent text-slate-400 hover:text-slate-200 w-full text-center flex items-center justify-center";
             } else {
                 if (modeAcousticBtn) modeAcousticBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-violet-600 text-white shadow w-full text-center flex items-center justify-center";
-                if (modePhysicalBtn) modePhysicalBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-transparent text-slate-400 hover:text-slate-200 w-full text-center flex items-center justify-center" + (state.isIOS || !("vibrate" in navigator) ? ' opacity-40 cursor-not-allowed' : '');
+                if (modePhysicalBtn) modePhysicalBtn.className = "py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-transparent text-slate-400 hover:text-slate-200 w-full text-center flex items-center justify-center opacity-40 cursor-not-allowed";
             }
         }
 
         // Listener para mudar para vibração Física
         if (modePhysicalBtn) {
             modePhysicalBtn.addEventListener('click', () => {
-                if (state.isIOS || !("vibrate" in navigator)) return; // Bloqueado no iOS
+                if (state.isIOS || state.vibrationBlockedByIframe || !("vibrate" in navigator)) {
+                    showDiagnostic("O motor físico está bloqueado neste contentor de testes web.", "text-amber-400");
+                    return; 
+                }
                 state.vibrationMode = 'physical';
                 if (vibrateLabelText) vibrateLabelText.textContent = "Vibração Física";
                 updateVibrationModeUI();
@@ -474,22 +490,35 @@
             });
         }
 
+        // Executa a vibração física de forma 100% segura usando blocos try-catch para prevenir crashes no metrónomo
+        function executePhysicalVibration(duration) {
+            if (!("vibrate" in navigator)) return false;
+            try {
+                // Algumas variantes de motores móveis respondem melhor a arrays e outras a números simples
+                const success = navigator.vibrate(duration) || navigator.vibrate([duration]);
+                return success;
+            } catch (e) {
+                // Regista a recusa mas impede a aplicação de falhar catastroficamente
+                console.warn("navigator.vibrate rejeitado silenciosamente pelo motor web:", e.message);
+                return false;
+            }
+        }
+
         // Botão de Diagnóstico de Toque Imediato: Motor Físico (IGNORA TEMPORIZADORES - EXECUÇÃO GESTUAL PURA)
         if (testPhysicalBtn) {
             testPhysicalBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 initAudioContext();
-                if (state.isIOS || !("vibrate" in navigator)) {
-                    showDiagnostic("Bloqueado pelo iOS: Usa o teste acústico!", "text-amber-400");
+                if (state.isIOS || state.vibrationBlockedByIframe || !("vibrate" in navigator)) {
+                    showDiagnostic("Bloqueado neste contentor! Ativa o Modo Acústico para vibrar com som.", "text-amber-400");
                     return;
                 }
                 
-                // Disparo de teste imediato baseado em gesto de toque puro
-                const vibrated = navigator.vibrate([150]);
-                if (vibrated) {
+                const success = executePhysicalVibration(150);
+                if (success) {
                     showDiagnostic("O motor mecânico respondeu com sucesso!", "text-emerald-400");
                 } else {
-                    showDiagnostic("O motor recusou. Verifica as Definições do Android.", "text-rose-400");
+                    showDiagnostic("Chamada ignorada ou desativada no sistema do teu telemóvel.", "text-rose-400");
                 }
             });
         }
@@ -500,7 +529,7 @@
                 e.stopPropagation();
                 initAudioContext();
                 playAcousticHaptic(200);
-                showDiagnostic("Som Sub-grave emitido! Aumenta o volume do telemóvel.", "text-fuchsia-400");
+                showDiagnostic("Som Sub-grave emitido! Aumenta o som do telemóvel.", "text-fuchsia-400");
             });
         }
 
@@ -848,10 +877,16 @@
             initAudioContext();
 
             // DESBLOQUEADOR GESTUAL DE SEGURANÇA:
-            // Despara uma micro-vibração no momento do clique para contornar bloqueios de segurança do navegador
+            // Dispara um micro pulso para ganhar autorização persistente de vibração
             if (state.vibrateEnabled) {
-                if (state.vibrationMode === 'physical' && "vibrate" in navigator) {
-                    navigator.vibrate([10]); // micro pulso para validar a sessão
+                if (state.vibrationMode === 'physical') {
+                    const success = executePhysicalVibration(15);
+                    // Se falhar silenciosamente no primeiro compasso, avisa e usa o acústico
+                    if (!success && !state.isIOS) {
+                        console.log("Vibração física rejeitada pelo browser. Ativação automática de contingência acústica.");
+                        state.vibrationMode = 'acoustic';
+                        updateVibrationModeUI();
+                    }
                 } else if (state.vibrationMode === 'acoustic') {
                     playAcousticHaptic(15);
                 }
@@ -897,16 +932,19 @@
                     const isAccent = vibrationStrength === 2;
                     const duration = isAccent ? state.vibrationBaseDuration * 1.5 : state.vibrationBaseDuration;
                     
-                    // Decisão inteligente baseada no modo selecionado pelo utilizador
+                    // Decisão inteligente baseada no modo ativo
                     if (state.vibrationMode === 'acoustic') {
                         playAcousticHaptic(duration);
-                    } else if (state.vibrationMode === 'physical' && "vibrate" in navigator) {
-                        navigator.vibrate([duration]);
+                    } else if (state.vibrationMode === 'physical') {
+                        const success = executePhysicalVibration(duration);
+                        // Caso a vibração de loop seja bloqueada pelo temporizador (Timeout Context Rules), ativa o som sub-grave
+                        if (!success) {
+                            playAcousticHaptic(duration);
+                        }
                     } else {
                         // Fallback de contingência
-                        if ("vibrate" in navigator) {
-                            navigator.vibrate([duration]);
-                        } else {
+                        const success = executePhysicalVibration(duration);
+                        if (!success) {
                             playAcousticHaptic(duration);
                         }
                     }
@@ -921,8 +959,10 @@
                         }
 
                         setTimeout(() => {
-                            visualPulse.classList.remove('bg-fuchsia-500/25', 'border-fuchsia-500/50', 'bg-violet-500/20', 'border-violet-500/40', 'scale-110', 'scale-105');
-                            visualPulse.classList.add('bg-violet-500/5', 'border-violet-500/20');
+                            if (visualPulse) {
+                                visualPulse.classList.remove('bg-fuchsia-500/25', 'border-fuchsia-500/50', 'bg-violet-500/20', 'border-violet-500/40', 'scale-110', 'scale-105');
+                                visualPulse.classList.add('bg-violet-500/5', 'border-violet-500/20');
+                            }
                         }, 100);
                     }
                 }
@@ -1104,7 +1144,9 @@
                 importStatus.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Partitura polirrítmica mapeada com sucesso!';
                 importStatus.classList.remove('hidden');
                 safeCreateIcons();
-                setTimeout(() => importStatus.classList.add('hidden'), 5000);
+                setTimeout(() => {
+                    if (importStatus) importStatus.classList.add('hidden');
+                }, 5000);
             }
         }
 
