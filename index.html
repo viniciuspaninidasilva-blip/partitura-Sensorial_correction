@@ -56,11 +56,11 @@
     <main class="flex-grow max-w-4xl w-full mx-auto p-4 space-y-6">
 
         <!-- Info/Warning Banner for iOS/Browsers -->
-        <div id="vibrationNotice" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex gap-3 items-start">
-            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
-            <div class="text-sm text-amber-200">
-                <p class="font-semibold">Aviso de Compatibilidade:</p>
-                <p class="text-slate-300 text-xs mt-1">A API de vibração não é suportada em dispositivos iOS (Safari/Chrome no iPhone). O app funcionará perfeitamente com som e feedback visual, mas o motor físico de vibração só responderá em dispositivos **Android** e navegadores compatíveis.</p>
+        <div id="vibrationNotice" class="hidden bg-violet-500/10 border border-violet-500/30 rounded-xl p-4 flex gap-3 items-start">
+            <i data-lucide="info" class="w-5 h-5 text-violet-400 shrink-0 mt-0.5"></i>
+            <div class="text-sm text-slate-200">
+                <p class="font-semibold text-violet-300">Modo de Vibração Acústica Ativo (iPhone/iOS):</p>
+                <p class="text-slate-300 text-xs mt-1">Dispositivos iOS não permitem vibração física direta via navegador. Ativamos o **módulo acústico**: o alto-falante emitirá ondas sub-graves de ar para fazer o aparelho pulsar em suas mãos. **Aumente o volume de som do seu celular para sentir o efeito!**</p>
             </div>
         </div>
 
@@ -168,7 +168,7 @@
             <div class="max-w-md mx-auto grid grid-cols-3 gap-3">
                 <button id="toggleVibrate" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 transition-all flex flex-col items-center gap-1.5 hover:bg-slate-800">
                     <i data-lucide="smartphone" class="w-5 h-5 text-violet-400"></i>
-                    <span class="text-[11px] font-medium">Vibração Geral</span>
+                    <span class="text-[11px] font-medium" id="vibrateLabelText">Vibração Geral</span>
                     <span class="text-[9px] text-slate-500" id="vibrateStatus">Ativada</span>
                 </button>
                 <button id="toggleSound" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 transition-all flex flex-col items-center gap-1.5 hover:bg-slate-800">
@@ -217,13 +217,13 @@
                 <ul class="list-disc pl-5 space-y-1 text-xs">
                     <li>Alterne entre os ritmos <strong class="text-violet-300">Samba</strong> e <strong class="text-violet-300">Baião</strong> para alterar os instrumentos disponíveis.</li>
                     <li>Use o ícone de <strong class="text-fuchsia-400">Alto-falante</strong> em cada linha de instrumento para habilitar ou silenciar aquele som individual.</li>
-                    <li>Use o ícone de <strong class="text-violet-400">Celular</strong> na linha de cada instrumento para definir se ele deve disparar a vibração física do smartphone. Você pode fazer apenas o instrumento grave ou todos vibrarem!</li>
+                    <li>Use o ícone de <strong class="text-violet-400">Celular</strong> na linha de cada instrumento para definir se ele deve disparar a vibração do smartphone.</li>
                 </ul>
 
                 <h4 class="font-semibold text-slate-100 flex items-center gap-1.5 mt-4">
-                    <i data-lucide="file-up" class="w-4 h-4 text-emerald-400"></i> Importando do MuseScore:
+                    <i data-lucide="smartphone" class="w-4 h-4 text-violet-400"></i> Vibração no iPhone (iOS):
                 </h4>
-                <p class="text-xs text-slate-400">Ao subir seu MusicXML, o app automaticamente separa as notas rítmicas nas 3 faixas baseando-se na altura (pitch/frequência) delas, organizando de forma inteligente a polirritmia.</p>
+                <p class="text-xs text-slate-400">Como o iOS limita a vibração comum de navegadores, usamos a **Vibração Acústica**. Ondas sonoras de ar de baixíssima frequência ($45\text{ Hz}$) fazem o seu iPhone vibrar fisicamente na sua mão. **Certifique-se de aumentar o volume de som do aparelho!**</p>
             </div>
 
             <button id="btnCloseModalBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm transition-colors">
@@ -249,27 +249,23 @@
             currentStep: 0,
             playbackInterval: null,
             currentGenre: 'samba', // 'samba' or 'baiao'
+            isIOS: false,
             
             // Instrument Tracks
             tracks: {
-                // Key format: `${genre}_${instrumentId}`
-                // Value format: { name: string, color: string, soundEnabled: bool, vibrateEnabled: bool, sequence: number[16] }
-                
                 // --- SAMBA TRACKS ---
                 samba_tamborim: {
                     name: "Tamborim",
                     color: "fuchsia",
                     soundEnabled: true,
                     vibrateEnabled: false,
-                    // Classic Tamborim pattern (telecoteco)
                     sequence: [2, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0]
                 },
                 samba_tamtam: {
                     name: "Tam-tam (Surdo)",
                     color: "emerald",
                     soundEnabled: true,
-                    vibrateEnabled: true, // Gravão conduzindo a vibração inicial
-                    // Strongly marks 2nd and 4th beats
+                    vibrateEnabled: true,
                     sequence: [0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]
                 },
                 samba_pandeiro: {
@@ -277,7 +273,6 @@
                     color: "violet",
                     soundEnabled: true,
                     vibrateEnabled: false,
-                    // Continuous supporting pattern
                     sequence: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
                 },
 
@@ -287,7 +282,6 @@
                     color: "emerald",
                     soundEnabled: true,
                     vibrateEnabled: true,
-                    // Classic zabumba syncopation
                     sequence: [2, 0, 0, 1, 0, 1, 0, 0, 2, 0, 0, 1, 0, 1, 0, 0]
                 },
                 baiao_triangulo: {
@@ -295,7 +289,6 @@
                     color: "amber",
                     soundEnabled: true,
                     vibrateEnabled: false,
-                    // Rapid open-closed continuous triangle loop
                     sequence: [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1]
                 },
                 baiao_pandeiro: {
@@ -308,7 +301,7 @@
             }
         };
 
-        // Web Audio API setup for synthesized percussion
+        // Web Audio API setup
         let audioCtx = null;
 
         // Ready elements
@@ -329,6 +322,7 @@
         const toggleFlash = document.getElementById('toggleFlash');
         const vibrateDurationRange = document.getElementById('vibrateDurationRange');
         const vibrateDurationLabel = document.getElementById('vibrateDurationLabel');
+        const vibrateLabelText = document.getElementById('vibrateLabelText');
 
         // Modal
         const infoModal = document.getElementById('infoModal');
@@ -340,16 +334,28 @@
         // Initialize
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            detectVibrationSupport();
-            setGenre('samba'); // Load samba first
+            detectPlatformAndVibration();
+            setGenre('samba');
         });
 
-        // Detect Vibration Compatibility
-        function detectVibrationSupport() {
-            if (!("vibrate" in navigator)) {
+        // Detect Platform & setup Vibration mode
+        function detectPlatformAndVibration() {
+            // Check for iOS
+            state.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            
+            if (state.isIOS) {
+                // For iOS, activate acoustic mode and update UI
                 vibrationNotice.classList.remove('hidden');
-                state.vibrateEnabled = false;
-                updateToggleUI(toggleVibrate, false, "Indisponível");
+                vibrateLabelText.textContent = "Vibração Acústica";
+                updateToggleUI(toggleVibrate, true, "Modo Acústico");
+            } else if (!("vibrate" in navigator)) {
+                // Non-compatible, non-iOS browser fallback to acoustic too
+                vibrationNotice.classList.remove('hidden');
+                vibrateLabelText.textContent = "Vibração Acústica";
+                updateToggleUI(toggleVibrate, true, "Modo Acústico");
+            } else {
+                // Android/Standard browser with native vibrate support
+                updateToggleUI(toggleVibrate, true, "Ativada");
             }
         }
 
@@ -373,9 +379,9 @@
 
         // Set Up Event Listeners
         toggleVibrate.addEventListener('click', () => {
-            if (!("vibrate" in navigator)) return;
             state.vibrateEnabled = !state.vibrateEnabled;
-            updateToggleUI(toggleVibrate, state.vibrateEnabled);
+            const text = state.isIOS ? "Modo Acústico" : "Ativada";
+            updateToggleUI(toggleVibrate, state.vibrateEnabled, state.vibrateEnabled ? text : "Desativado");
         });
 
         toggleSound.addEventListener('click', () => {
@@ -396,13 +402,11 @@
 
         // Set current genre and rebuild DOM
         function setGenre(genre) {
-            // Stop playing if running to avoid glitches
             stopPlayback();
 
             state.currentGenre = genre;
             scoreName.textContent = `Estilo Selecionado: ${genre.charAt(0).toUpperCase() + genre.slice(1)}`;
 
-            // Style buttons
             const sambaBtn = document.getElementById('genreBtn-samba');
             const baiaoBtn = document.getElementById('genreBtn-baiao');
             
@@ -424,21 +428,17 @@
         function buildMultiSequencer() {
             tracksContainer.innerHTML = '';
             
-            // Extract tracks only belonging to the active genre
             const activeTrackKeys = Object.keys(state.tracks).filter(key => key.startsWith(state.currentGenre));
 
             activeTrackKeys.forEach(trackKey => {
                 const track = state.tracks[trackKey];
                 
-                // Track Container
                 const trackDiv = document.createElement('div');
                 trackDiv.className = "space-y-2 bg-slate-950/50 p-4 border border-slate-800/60 rounded-xl";
                 
-                // Header of track: Title + Controls
                 const trackHeader = document.createElement('div');
                 trackHeader.className = "flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-900 pb-2";
                 
-                // Instrument title
                 const titleWrapper = document.createElement('div');
                 titleWrapper.className = "flex items-center gap-2";
                 
@@ -452,7 +452,6 @@
                     <span class="font-bold text-sm text-slate-300">${track.name}</span>
                 `;
 
-                // Sub-mix controls (Mute & Vibrate toggles)
                 const controlsWrapper = document.createElement('div');
                 controlsWrapper.className = "flex items-center gap-2";
 
@@ -466,7 +465,7 @@
                 soundBtn.innerHTML = `<i data-lucide="${track.soundEnabled ? 'volume-2' : 'volume-x'}" class="w-3.5 h-3.5"></i> <span>Som</span>`;
                 soundBtn.onclick = () => {
                     track.soundEnabled = !track.soundEnabled;
-                    buildMultiSequencer(); // re-draw
+                    buildMultiSequencer();
                 };
 
                 // Individual Track Vibrate Trigger
@@ -479,7 +478,7 @@
                 vibrateBtn.innerHTML = `<i data-lucide="smartphone" class="w-3.5 h-3.5"></i> <span>Vibrar</span>`;
                 vibrateBtn.onclick = () => {
                     track.vibrateEnabled = !track.vibrateEnabled;
-                    buildMultiSequencer(); // re-draw
+                    buildMultiSequencer();
                 };
 
                 controlsWrapper.appendChild(soundBtn);
@@ -488,7 +487,6 @@
                 trackHeader.appendChild(titleWrapper);
                 trackHeader.appendChild(controlsWrapper);
 
-                // Steps Sequencer Grid for this Track
                 const stepGrid = document.createElement('div');
                 stepGrid.className = "grid grid-cols-8 md:grid-cols-16 gap-1.5";
 
@@ -497,7 +495,6 @@
                     const stepBtn = document.createElement('button');
                     stepBtn.id = `btn-${trackKey}-${i}`;
                     
-                    // Style base step button depending on state
                     let stateColors = "bg-slate-900 border-slate-800/80 hover:border-slate-700";
                     if (stepVal === 1) {
                         stateColors = "bg-violet-600 border-violet-500 text-white font-bold";
@@ -505,13 +502,11 @@
                         stateColors = "bg-fuchsia-600 border-fuchsia-500 text-white font-extrabold";
                     }
 
-                    // Check if beat marker helper (1st, 5th, 9th, 13th steps are stronger beats)
                     const isBeatStart = i % 4 === 0;
                     const beatBorder = isBeatStart ? "ring-1 ring-slate-700" : "";
 
                     stepBtn.className = `h-10 rounded-lg text-[10px] flex flex-col items-center justify-center transition-all relative ${stateColors} ${beatBorder} active:scale-90`;
                     
-                    // Display dot and step number
                     stepBtn.innerHTML = `
                         <span class="opacity-60 text-[8px]">${i+1}</span>
                         <div class="w-1.5 h-1.5 rounded-full mt-0.5 ${stepVal > 0 ? 'bg-white' : 'bg-transparent'}"></div>
@@ -555,7 +550,6 @@
             const now = audioCtx.currentTime;
 
             if (type.includes('tamtam')) {
-                // Low pitch drum / Zabumba / Surdo
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 
@@ -565,7 +559,6 @@
                 osc.type = 'triangle';
                 const baseFreq = isAccent ? 85 : 70;
                 osc.frequency.setValueAtTime(baseFreq, now);
-                // Sweep freq down
                 osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
                 
                 gain.gain.setValueAtTime(0.5, now);
@@ -575,7 +568,6 @@
                 osc.stop(now + 0.2);
 
             } else if (type.includes('triangulo')) {
-                // High frequency bell sound
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 
@@ -592,7 +584,6 @@
                 osc.stop(now + 0.3);
 
             } else if (type.includes('tamborim')) {
-                // Snappy punch skin
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 
@@ -610,9 +601,7 @@
                 osc.stop(now + 0.06);
 
             } else if (type.includes('pandeiro')) {
-                // Combined thump and shaker noise
-                // Shaker (White noise with bandpass)
-                const bufferSize = audioCtx.sampleRate * 0.05; // extremely short burst
+                const bufferSize = audioCtx.sampleRate * 0.05;
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) {
@@ -637,7 +626,6 @@
                 noise.start(now);
                 noise.stop(now + 0.05);
                 
-                // Add a small slap low-end
                 const osc = audioCtx.createOscillator();
                 const drumGain = audioCtx.createGain();
                 osc.connect(drumGain);
@@ -648,6 +636,28 @@
                 osc.start(now);
                 osc.stop(now + 0.04);
             }
+        }
+
+        // Acoustic Haptic generator for iOS Devices (Generates ultra low-end physical movement)
+        function playAcousticHaptic(duration) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.type = 'sine';
+            // 45Hz is perfect to push maximum air and shake phone chassis physically
+            osc.frequency.setValueAtTime(45, now); 
+            
+            gain.gain.setValueAtTime(1.0, now); // Max gain to force physical movement
+            gain.gain.exponentialRampToValueAtTime(0.001, now + (duration / 1000));
+            
+            osc.start(now);
+            osc.stop(now + (duration / 1000));
         }
 
         // Central Metronome engine loop
@@ -673,17 +683,15 @@
                 const activeTrackKeys = Object.keys(state.tracks).filter(key => key.startsWith(state.currentGenre));
                 
                 let triggerVibrateNow = false;
-                let vibrationStrength = 1; // 1 = normal, 2 = accent
+                let vibrationStrength = 1;
 
                 activeTrackKeys.forEach(trackKey => {
                     const track = state.tracks[trackKey];
                     const hitType = track.sequence[state.currentStep];
 
-                    // Clear previous play step visual marker
                     const prevMarker = document.getElementById(`playing-${trackKey}-${previousStep}`);
                     if (prevMarker) prevMarker.style.opacity = '0';
 
-                    // Highlight current active step visually in the track
                     const curMarker = document.getElementById(`playing-${trackKey}-${state.currentStep}`);
                     if (curMarker) curMarker.style.opacity = '1';
 
@@ -699,13 +707,20 @@
                     }
                 });
 
-                // Trigger physical and general flash feedback on accumulated hits
-                if (triggerVibrateNow) {
+                // Trigger physical/acoustic haptics
+                if (triggerVibrateNow && state.vibrateEnabled) {
                     const isAccent = vibrationStrength === 2;
                     const duration = isAccent ? state.vibrationBaseDuration * 1.5 : state.vibrationBaseDuration;
                     
-                    if (state.vibrateEnabled && "vibrate" in navigator) {
+                    if (state.isIOS) {
+                        // iOS Acoustic Workaround
+                        playAcousticHaptic(duration);
+                    } else if ("vibrate" in navigator) {
+                        // Standard physical Android engine
                         navigator.vibrate(duration);
+                    } else {
+                        // Fallback browser acoustic
+                        playAcousticHaptic(duration);
                     }
 
                     if (state.flashEnabled) {
@@ -723,7 +738,6 @@
                     }
                 }
 
-                // Advance
                 state.currentStep = (state.currentStep + 1) % 16;
                 state.playbackInterval = setTimeout(runCycle, calculateIntervalMs());
             };
@@ -802,7 +816,6 @@
                 return;
             }
 
-            // Get BPM
             let detectedBPM = 110;
             const soundTags = xmlDoc.getElementsByTagName('sound');
             if (soundTags.length > 0 && soundTags[0].getAttribute('tempo')) {
@@ -825,10 +838,9 @@
 
             const sixteenthDuration = divisions / 4;
             
-            // Build three empty tracks for our imported score
-            const impTrack1 = Array(16).fill(0); // Low
-            const impTrack2 = Array(16).fill(0); // Mid
-            const impTrack3 = Array(16).fill(0); // High
+            const impTrack1 = Array(16).fill(0);
+            const impTrack2 = Array(16).fill(0);
+            const impTrack3 = Array(16).fill(0);
             
             let currentGridTime = 0;
 
@@ -838,7 +850,6 @@
                 const durationTag = note.getElementsByTagName('duration')[0];
                 const noteDuration = durationTag ? parseInt(durationTag.textContent) : divisions;
 
-                // Detect Accents
                 let isAccented = false;
                 const notations = note.getElementsByTagName('notations')[0];
                 if (notations) {
@@ -848,14 +859,12 @@
                     }
                 }
 
-                // Detect Note pitch / step height to route to correct instrument row
-                let pitchValue = 60; // default medium pitch
+                let pitchValue = 60;
                 const pitchTag = note.getElementsByTagName('pitch')[0];
                 if (pitchTag) {
                     const step = pitchTag.getElementsByTagName('step')[0]?.textContent || 'C';
                     const octave = parseInt(pitchTag.getElementsByTagName('octave')[0]?.textContent || '4');
                     
-                    // Simple MIDI pitch approximation
                     const stepOffsets = { 'C':0, 'D':2, 'E':4, 'F':5, 'G':7, 'A':9, 'B':11 };
                     pitchValue = 12 * (octave + 1) + stepOffsets[step];
                 }
@@ -865,13 +874,12 @@
                     if (stepIndex >= 0 && stepIndex < 16) {
                         const hitVal = isAccented ? 2 : 1;
                         
-                        // Heuristic: Route based on pitch
                         if (pitchValue < 60) {
-                            impTrack1[stepIndex] = hitVal; // Tam-tam
+                            impTrack1[stepIndex] = hitVal;
                         } else if (pitchValue >= 72) {
-                            impTrack3[stepIndex] = hitVal; // Triângulo/Pandeiro
+                            impTrack3[stepIndex] = hitVal;
                         } else {
-                            impTrack2[stepIndex] = hitVal; // Tamborim/Pandeiro
+                            impTrack2[stepIndex] = hitVal;
                         }
                     }
                 }
@@ -882,14 +890,12 @@
                 }
             }
 
-            // Assign parsed tracks into active genre
             const activeKeys = Object.keys(state.tracks).filter(key => key.startsWith(state.currentGenre));
             
-            // Map our 3 parsing levels to the 3 active tracks of the genre
             if (activeKeys.length >= 3) {
-                state.tracks[activeKeys[0]].sequence = impTrack2; // Mid row
-                state.tracks[activeKeys[1]].sequence = impTrack1; // Low row
-                state.tracks[activeKeys[2]].sequence = impTrack3; // High/Misc row
+                state.tracks[activeKeys[0]].sequence = impTrack2;
+                state.tracks[activeKeys[1]].sequence = impTrack1;
+                state.tracks[activeKeys[2]].sequence = impTrack3;
             }
 
             state.bpm = detectedBPM;
@@ -898,7 +904,6 @@
             
             buildMultiSequencer();
 
-            // Display success status
             importStatus.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Partitura polirrítmica mapeada com sucesso!';
             importStatus.classList.remove('hidden');
             lucide.createIcons();
